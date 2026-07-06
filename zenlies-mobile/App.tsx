@@ -16,6 +16,9 @@ onlineManager.setEventListener((setOnline) => {
 });
 
 
+import { useColorScheme } from 'nativewind';
+import { useThemeStore } from './src/store/themeStore';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -30,13 +33,23 @@ const asyncStoragePersister = createAsyncStoragePersister({
 });
 
 export default function App() {
+  const { setColorScheme } = useColorScheme();
+  const theme = useThemeStore((state) => state.theme);
+  const isHydrated = useThemeStore((state) => state.isHydrated);
+
+  React.useEffect(() => {
+    if (isHydrated) {
+      setColorScheme(theme);
+    }
+  }, [theme, isHydrated, setColorScheme]);
+
   return (
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
     >
       <SafeAreaProvider>
-        <StatusBar style="auto" />
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
         <AppNavigator />
       </SafeAreaProvider>
     </PersistQueryClientProvider>

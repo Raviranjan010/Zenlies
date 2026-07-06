@@ -78,19 +78,33 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const url = `${API_URL.replace(/\/$/, '')}${path}`;
 
+  // Configure a 25-second timeout safeguard for slow AI operations
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
   try {
     const response = await fetch(url, {
       ...options,
       headers,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const contentType = response.headers.get('content-type');
     let data: any = {};
     if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        data = { error: 'Malformed JSON response from server.' };
+      }
     } else {
-      const text = await response.text();
-      data = { error: text };
+      try {
+        const text = await response.text();
+        data = { error: text || `Request failed with status ${response.status}` };
+      } catch (textErr) {
+        data = { error: `Request failed with status ${response.status}` };
+      }
     }
 
     if (!response.ok || data.success === false) {
@@ -100,6 +114,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
     return data as T;
   } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error(`API Timeout on ${path}`);
+      throw new Error('Request timed out. Please try again.');
+    }
     console.error(`API Error on ${path}:`, error);
     throw error;
   }

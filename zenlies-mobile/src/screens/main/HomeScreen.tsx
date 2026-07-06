@@ -9,6 +9,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { MainTabNavigationProp } from '../../navigation/types';
 import { api, AnalyzeResumeResponse } from '../../services/api';
+import { useThemeStore } from '../../store/themeStore';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const CIRCLE_RADIUS = 40;
@@ -16,6 +17,7 @@ const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
 
 export default function HomeScreen() {
   const navigation = useNavigation<MainTabNavigationProp<'Home'>>();
+  const theme = useThemeStore((state) => state.theme);
 
   // Form states
   const [pickedFile, setPickedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
@@ -146,56 +148,56 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-900" contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView className="flex-1 bg-slate-50 dark:bg-slate-900" contentContainerStyle={{ paddingBottom: 40 }}>
       <View className="px-6 py-6">
         
         {/* Title */}
         <View className="flex-row items-center mb-6">
           <Sparkles size={24} color="#6366f1" className="mr-2" />
-          <Text className="text-2xl font-bold text-white">Resume Analyzer</Text>
+          <Text className="text-2xl font-bold text-slate-800 dark:text-white">Resume Analyzer</Text>
         </View>
 
         {/* Input Card Container */}
-        <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl p-5 shadow-xl mb-6">
-          <Text className="text-white text-base font-bold mb-4">Analyze New Profile</Text>
+        <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-3xl p-5 shadow-sm dark:shadow-xl mb-6">
+          <Text className="text-slate-800 dark:text-white text-base font-bold mb-4">Analyze New Profile</Text>
 
           {/* Validation Error */}
           {validationError && (
-            <View className="flex-row items-center bg-red-950/50 border border-red-500/30 rounded-2xl p-4 mb-4">
+            <View className="flex-row items-center bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 rounded-2xl p-4 mb-4">
               <AlertCircle size={20} color="#f87171" className="mr-3" />
-              <Text className="text-red-400 text-xs flex-1">{validationError}</Text>
+              <Text className="text-red-600 dark:text-red-400 text-xs flex-1">{validationError}</Text>
             </View>
           )}
 
           {/* API Error */}
           {apiError && (
-            <View className="flex-row items-center bg-red-950/50 border border-red-500/30 rounded-2xl p-4 mb-4">
+            <View className="flex-row items-center bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 rounded-2xl p-4 mb-4">
               <AlertCircle size={20} color="#f87171" className="mr-3" />
-              <Text className="text-red-400 text-xs flex-1">{apiError}</Text>
+              <Text className="text-red-600 dark:text-red-400 text-xs flex-1">{apiError}</Text>
             </View>
           )}
 
           {/* Upload Area */}
           <View className="mb-5">
-            <Text className="text-slate-400 text-xs font-semibold mb-2 ml-1">UPLOAD RESUME (PDF, DOCX, TXT)</Text>
+            <Text className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2 ml-1">UPLOAD RESUME (PDF, DOCX, TXT)</Text>
             {!pickedFile ? (
               <TouchableOpacity
                 onPress={handlePickDocument}
-                className="border-2 border-dashed border-slate-600 hover:border-indigo-500/50 bg-slate-900/40 rounded-2xl py-6 justify-center items-center"
+                className="border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 rounded-2xl py-6 justify-center items-center"
               >
                 <Upload size={32} color="#6366f1" className="mb-2" />
-                <Text className="text-slate-300 font-semibold text-sm">Select Document</Text>
-                <Text className="text-slate-500 text-xs mt-1">PDF, DOCX, or TXT up to 5MB</Text>
+                <Text className="text-slate-600 dark:text-slate-300 font-semibold text-sm">Select Document</Text>
+                <Text className="text-slate-400 dark:text-slate-500 text-xs mt-1">PDF, DOCX, or TXT up to 5MB</Text>
               </TouchableOpacity>
             ) : (
-              <View className="flex-row items-center bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3">
+              <View className="flex-row items-center bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3">
                 <FileText size={28} color="#6366f1" />
                 <View className="flex-1 ml-3 mr-2">
-                  <Text className="text-white text-sm font-semibold truncate" numberOfLines={1}>
+                  <Text className="text-slate-800 dark:text-white text-sm font-semibold truncate" numberOfLines={1}>
                     {pickedFile.name}
                   </Text>
                   {pickedFile.size && (
-                    <Text className="text-slate-500 text-xs">
+                    <Text className="text-slate-400 dark:text-slate-500 text-xs">
                       {(pickedFile.size / 1024).toFixed(1)} KB
                     </Text>
                   )}
@@ -209,22 +211,22 @@ export default function HomeScreen() {
 
           {/* Stream Category */}
           <View className="mb-4">
-            <Text className="text-slate-400 text-xs font-semibold mb-2 ml-1">STREAM / TARGET CATEGORY (OPTIONAL)</Text>
-            <View className="bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3">
+            <Text className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2 ml-1">STREAM / TARGET CATEGORY (OPTIONAL)</Text>
+            <View className="bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3">
               <TextInput
                 placeholder="e.g. Software Engineer, Product Manager"
                 placeholderTextColor="#64748b"
                 value={category}
                 onChangeText={setCategory}
-                className="text-white text-sm py-0"
+                className="text-slate-800 dark:text-white text-sm py-0"
               />
             </View>
           </View>
 
           {/* Job Description */}
           <View className="mb-6">
-            <Text className="text-slate-400 text-xs font-semibold mb-2 ml-1">JOB DESCRIPTION (OPTIONAL)</Text>
-            <View className="bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3">
+            <Text className="text-slate-500 dark:text-slate-400 text-xs font-semibold mb-2 ml-1">JOB DESCRIPTION (OPTIONAL)</Text>
+            <View className="bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3">
               <TextInput
                 placeholder="Paste the target job description here..."
                 placeholderTextColor="#64748b"
@@ -233,7 +235,7 @@ export default function HomeScreen() {
                 style={{ minHeight: 80, textAlignVertical: 'top' }}
                 value={jobDescription}
                 onChangeText={setJobDescription}
-                className="text-white text-sm py-0"
+                className="text-slate-800 dark:text-white text-sm py-0"
               />
             </View>
           </View>
@@ -260,12 +262,26 @@ export default function HomeScreen() {
 
         {/* Loading Skeleton Simulation */}
         {loading && (
-          <View className="bg-slate-800/50 border border-slate-700/30 rounded-3xl p-6 items-center">
-            <ActivityIndicator size="large" color="#6366f1" />
-            <Text className="text-slate-300 font-semibold mt-4 text-base">Gemini is analyzing your profile...</Text>
-            <Text className="text-slate-500 text-xs mt-1 text-center px-6">
-              Scanning keywords, calculating matching indices, and extracting skills.
-            </Text>
+          <View className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/30 rounded-3xl p-6 space-y-6">
+            <View className="items-center">
+              <View className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700/50 animate-pulse justify-center items-center">
+                <ActivityIndicator size="small" color="#6366f1" />
+              </View>
+              <Text className="text-slate-700 dark:text-slate-300 font-semibold mt-4 text-base">Gemini is analyzing your profile...</Text>
+              <Text className="text-slate-400 dark:text-slate-500 text-xs mt-1 text-center px-6">
+                Scanning keywords, calculating matching indices, and extracting skills.
+              </Text>
+            </View>
+
+            {/* Skeleton blocks */}
+            <View className="space-y-3">
+              <View className="w-32 h-5 bg-slate-200 dark:bg-slate-700/50 rounded-lg animate-pulse" />
+              <View className="w-full h-12 bg-slate-100 dark:bg-slate-700/30 rounded-xl animate-pulse" />
+            </View>
+            <View className="space-y-3">
+              <View className="w-40 h-5 bg-slate-200 dark:bg-slate-700/50 rounded-lg animate-pulse" />
+              <View className="w-full h-20 bg-slate-100 dark:bg-slate-700/30 rounded-xl animate-pulse" />
+            </View>
           </View>
         )}
 
@@ -277,8 +293,8 @@ export default function HomeScreen() {
             className="space-y-6"
           >
             {/* Main Score Card */}
-            <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl p-6 shadow-xl items-center mb-6">
-              <Text className="text-slate-400 text-xs font-semibold tracking-wider mb-4 uppercase">ATS Matching Score</Text>
+            <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-sm dark:shadow-xl items-center mb-6">
+              <Text className="text-slate-400 dark:text-slate-500 text-xs font-semibold tracking-wider mb-4 uppercase">ATS Matching Score</Text>
               
               {/* Custom SVG gauge progress ring */}
               <View className="relative w-[100px] h-[100px] justify-center items-center">
@@ -288,7 +304,7 @@ export default function HomeScreen() {
                     cx="50"
                     cy="50"
                     r={CIRCLE_RADIUS}
-                    stroke="#1e293b"
+                    stroke={theme === 'dark' ? '#1e293b' : '#e2e8f0'}
                     strokeWidth="8"
                     fill="transparent"
                   />
@@ -310,26 +326,26 @@ export default function HomeScreen() {
                 
                 {/* Score Number overlay */}
                 <View className="absolute justify-center items-center">
-                  <Text className="text-white text-2xl font-extrabold">{displayScore}%</Text>
+                  <Text className="text-slate-800 dark:text-white text-2xl font-extrabold">{displayScore}%</Text>
                 </View>
               </View>
 
               {/* Category Badge */}
               <View className="mt-5 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full">
-                <Text className="text-indigo-400 text-xs font-bold uppercase tracking-widest">
+                <Text className="text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-widest">
                   Category: {result.category || 'N/A'}
                 </Text>
               </View>
             </View>
 
             {/* Skills Chip Lists */}
-            <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl p-6 shadow-xl mb-6">
-              <Text className="text-white text-base font-bold mb-4">Detected Skills</Text>
+            <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-sm dark:shadow-xl mb-6">
+              <Text className="text-slate-800 dark:text-white text-base font-bold mb-4">Detected Skills</Text>
               {result.detected_skills && result.detected_skills.length > 0 ? (
                 <View className="flex-row flex-wrap gap-2">
                   {result.detected_skills.map((skill, index) => (
-                    <View key={index} className="bg-indigo-950/40 border border-indigo-500/20 px-3 py-1.5 rounded-xl">
-                      <Text className="text-indigo-400 text-xs font-medium">{skill}</Text>
+                    <View key={index} className="bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl">
+                      <Text className="text-indigo-600 dark:text-indigo-400 text-xs font-medium">{skill}</Text>
                     </View>
                   ))}
                 </View>
@@ -339,32 +355,32 @@ export default function HomeScreen() {
             </View>
 
             {/* Missing Keywords Lists */}
-            <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl p-6 shadow-xl mb-6">
-              <Text className="text-white text-base font-bold mb-4 text-rose-400">Missing Keywords</Text>
+            <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-sm dark:shadow-xl mb-6">
+              <Text className="text-slate-800 dark:text-white text-base font-bold mb-4 text-rose-500 dark:text-rose-400">Missing Keywords</Text>
               {result.missing_keywords && result.missing_keywords.length > 0 ? (
                 <View className="flex-row flex-wrap gap-2">
                   {result.missing_keywords.map((keyword, index) => (
-                    <View key={index} className="bg-rose-950/40 border border-rose-500/20 px-3 py-1.5 rounded-xl">
-                      <Text className="text-rose-400 text-xs font-medium">{keyword}</Text>
+                    <View key={index} className="bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl">
+                      <Text className="text-rose-600 dark:text-rose-400 text-xs font-medium">{keyword}</Text>
                     </View>
                   ))}
                 </View>
               ) : (
-                <Text className="text-emerald-400 text-sm flex-row items-center">
+                <Text className="text-emerald-600 dark:text-emerald-400 text-sm flex-row items-center font-semibold">
                   <CheckCircle2 size={16} className="mr-2" /> Excellent! No key job description keywords missing.
                 </Text>
               )}
             </View>
 
             {/* Suggestions card list */}
-            <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl p-6 shadow-xl mb-6">
-              <Text className="text-white text-base font-bold mb-4">Improvement Suggestions</Text>
+            <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-sm dark:shadow-xl mb-6">
+              <Text className="text-slate-800 dark:text-white text-base font-bold mb-4">Improvement Suggestions</Text>
               {result.suggestions && result.suggestions.length > 0 ? (
                 <View className="space-y-3">
                   {result.suggestions.map((suggestion, index) => (
-                    <View key={index} className="flex-row items-start bg-slate-900/40 border border-slate-700/30 rounded-2xl p-4">
+                    <View key={index} className="flex-row items-start bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700/30 rounded-2xl p-4">
                       <ChevronRight size={16} color="#6366f1" className="mt-0.5 mr-2" />
-                      <Text className="text-slate-300 text-sm flex-1 leading-relaxed">
+                      <Text className="text-slate-700 dark:text-slate-300 text-sm flex-1 leading-relaxed">
                         {suggestion}
                       </Text>
                     </View>
@@ -378,10 +394,10 @@ export default function HomeScreen() {
             {/* Open Preview Screen button */}
             <TouchableOpacity 
               onPress={() => navigation.navigate('ResumePreview')}
-              className="w-full bg-slate-800 border border-slate-700 py-4 rounded-2xl flex-row justify-center items-center shadow"
+              className="w-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 py-4 rounded-2xl flex-row justify-center items-center shadow"
             >
-              <Text className="text-white text-base font-semibold mr-2">Open Resume Preview</Text>
-              <ChevronRight size={18} color="#ffffff" />
+              <Text className="text-slate-800 dark:text-white text-base font-semibold mr-2">Open Resume Preview</Text>
+              <ChevronRight size={18} color={theme === 'dark' ? '#ffffff' : '#1e293b'} />
             </TouchableOpacity>
           </Animated.View>
         )}

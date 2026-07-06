@@ -122,7 +122,7 @@ export default function DashboardScreen() {
         : 'text-rose-400 bg-rose-500/10 border-rose-500/20';
 
     return (
-      <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl overflow-hidden mb-4 shadow-lg">
+      <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-3xl overflow-hidden mb-4 shadow-sm dark:shadow-lg">
         {/* Card colored gradient header strip */}
         <LinearGradient
           colors={cardGradients}
@@ -138,17 +138,17 @@ export default function DashboardScreen() {
         >
           <View className="flex-row justify-between items-start">
             <View className="flex-1 mr-3">
-              <Text className="text-white text-lg font-bold mb-1" numberOfLines={1}>
+              <Text className="text-slate-800 dark:text-white text-lg font-bold mb-1" numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-3">
+              <Text className="text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-3">
                 {item.category || 'General'}
               </Text>
               
               {/* Date */}
               <View className="flex-row items-center">
                 <Calendar size={14} color="#64748b" className="mr-1.5" />
-                <Text className="text-slate-500 text-xs">
+                <Text className="text-slate-500 dark:text-slate-400 text-xs">
                   Updated: {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A'}
                 </Text>
               </View>
@@ -161,7 +161,7 @@ export default function DashboardScreen() {
                   <Text className="text-xs font-bold font-mono">ATS: {Math.round(item.ats_score)}%</Text>
                 </View>
               ) : (
-                <View className="border border-slate-700 bg-slate-900/60 px-3 py-1 rounded-full">
+                <View className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900/60 px-3 py-1 rounded-full">
                   <Text className="text-slate-500 text-xs font-bold">Unscored</Text>
                 </View>
               )}
@@ -171,8 +171,8 @@ export default function DashboardScreen() {
                 disabled={isOffline}
                 className={`p-2 border rounded-xl ${
                   isOffline 
-                    ? 'bg-slate-900/10 border-slate-800/20 opacity-30' 
-                    : 'bg-slate-900/40 border-slate-700/50 hover:bg-slate-900'
+                    ? 'bg-slate-100 dark:bg-slate-900/10 border-slate-200 dark:border-slate-800/20 opacity-30' 
+                    : 'bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-900'
                 }`}
               >
                 <Trash2 size={16} color={isOffline ? '#64748b' : '#f87171'} />
@@ -193,34 +193,34 @@ export default function DashboardScreen() {
         {/* Welcome Section */}
         <View className="flex-row items-center mb-6">
           <Sparkles size={24} color="#6366f1" className="mr-2" />
-          <Text className="text-2xl font-bold text-white">Dashboard</Text>
+          <Text className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</Text>
         </View>
 
-        <Text className="text-slate-400 text-sm mb-6">
-          Welcome back, <Text className="text-white font-semibold">{name}</Text>! Check your ATS performance.
+        <Text className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+          Welcome back, <Text className="text-slate-800 dark:text-white font-semibold">{name}</Text>! Check your ATS performance.
         </Text>
 
         {/* Stats Grid */}
         <View className="flex-row justify-between mb-2">
           {/* Total Resumes */}
-          <View className="bg-slate-800/80 border border-slate-700/50 rounded-2xl p-4 flex-1 mr-2 items-center">
+          <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 flex-1 mr-2 items-center shadow-sm dark:shadow-lg">
             <FileText size={20} color="#6366f1" className="mb-2" />
-            <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Resumes</Text>
-            <Text className="text-white text-xl font-extrabold mt-1">{stats?.total_resumes ?? 0}</Text>
+            <Text className="text-slate-400 dark:text-slate-500 text-[10px] uppercase font-bold tracking-wider">Resumes</Text>
+            <Text className="text-slate-800 dark:text-white text-xl font-extrabold mt-1">{stats?.total_resumes ?? 0}</Text>
           </View>
 
           {/* Average Score */}
-          <View className="bg-slate-800/80 border border-slate-700/50 rounded-2xl p-4 flex-1 mx-1 items-center">
+          <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 flex-1 mx-1 items-center shadow-sm dark:shadow-lg">
             <BarChart2 size={20} color="#10b981" className="mb-2" />
-            <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Avg ATS</Text>
-            <Text className="text-white text-xl font-extrabold mt-1">{stats?.avg_score ?? 0}%</Text>
+            <Text className="text-slate-400 dark:text-slate-500 text-[10px] uppercase font-bold tracking-wider">Avg ATS</Text>
+            <Text className="text-slate-800 dark:text-white text-xl font-extrabold mt-1">{stats?.avg_score ?? 0}%</Text>
           </View>
 
           {/* Best Score */}
-          <View className="bg-slate-800/80 border border-slate-700/50 rounded-2xl p-4 flex-1 ml-2 items-center">
+          <View className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 flex-1 ml-2 items-center shadow-sm dark:shadow-lg">
             <Award size={20} color="#f59e0b" className="mb-2" />
-            <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Best Score</Text>
-            <Text className="text-white text-xl font-extrabold mt-1">{stats?.best_score ?? 0}%</Text>
+            <Text className="text-slate-400 dark:text-slate-500 text-[10px] uppercase font-bold tracking-wider">Best Score</Text>
+            <Text className="text-slate-800 dark:text-white text-xl font-extrabold mt-1">{stats?.best_score ?? 0}%</Text>
           </View>
         </View>
       </View>
@@ -258,15 +258,32 @@ export default function DashboardScreen() {
 
   if (isInitialLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-900">
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text className="text-slate-400 text-sm mt-4 font-semibold">Loading Dashboard...</Text>
+      <View className="flex-1 bg-slate-50 dark:bg-slate-900 px-6 pt-6">
+        {/* Header Skeleton */}
+        <View className="mb-6">
+          <View className="w-48 h-8 bg-slate-200 dark:bg-slate-800 rounded-xl mb-4 animate-pulse" />
+          <View className="w-64 h-4 bg-slate-200 dark:bg-slate-800 rounded-lg mb-6 animate-pulse" />
+          
+          {/* Stats Grid Skeleton */}
+          <View className="flex-row justify-between mb-2">
+            <View className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700/30 rounded-2xl p-4 flex-1 mr-2 items-center h-24 justify-center animate-pulse" />
+            <View className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700/30 rounded-2xl p-4 flex-1 mx-1 items-center h-24 justify-center animate-pulse" />
+            <View className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700/30 rounded-2xl p-4 flex-1 ml-2 items-center h-24 justify-center animate-pulse" />
+          </View>
+        </View>
+
+        {/* Cards Skeleton */}
+        <View className="flex-1 animate-pulse">
+          <View className="bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/30 rounded-3xl p-5 mb-4 h-32" />
+          <View className="bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/30 rounded-3xl p-5 mb-4 h-32" />
+          <View className="bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/30 rounded-3xl p-5 mb-4 h-32" />
+        </View>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-slate-900 relative">
+    <View className="flex-1 bg-slate-50 dark:bg-slate-900 relative">
       {/* Offline Banner */}
       {isOffline && (
         <View className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex-row justify-center items-center">
