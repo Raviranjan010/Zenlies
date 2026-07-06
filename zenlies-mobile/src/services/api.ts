@@ -1,4 +1,4 @@
-timport { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../store/authStore';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 

@@ -3,23 +3,27 @@ import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl, Activity
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FileText, Plus, Trash2, Calendar, FileQuestion, Sparkles, Award, BarChart2, ChevronRight } from 'lucide-react-native';
+import { FileText, Plus, Trash2, Calendar, FileQuestion, Sparkles, Award, BarChart2, ChevronRight, WifiOff } from 'lucide-react-native';
+import { useNetInfo } from '@react-native-community/netinfo';
 
 import { MainTabNavigationProp } from '../../navigation/types';
 import { api, Resume } from '../../services/api';
 
 const GRADIENTS: readonly (readonly [string, string])[] = [
-  ['#6366f1', '#8b5cf6'], // Indigo-Violet
-  ['#10b981', '#14b8a6'], // Emerald-Teal
-  ['#f43f5e', '#ec4899'], // Rose-Pink
-  ['#f59e0b', '#f97316'], // Amber-Orange
-  ['#0ea5e9', '#3b82f6'], // Sky-Blue
+  ['#60a5fa', '#2563eb'], // Blue
+  ['#c084fc', '#9333ea'], // Purple
+  ['#4ade80', '#16a34a'], // Green
+  ['#fb923c', '#ea580c'], // Orange
+  ['#f472b6', '#db2777'], // Pink
+  ['#818cf8', '#4f46e5'], // Indigo
 ];
 
 export default function DashboardScreen() {
   const navigation = useNavigation<MainTabNavigationProp<'Dashboard'>>();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const netInfo = useNetInfo();
+  const isOffline = netInfo.isConnected === false;
 
   // Queries
   const { data: dashboardData, isLoading: isDashboardLoading, refetch: refetchDashboard } = useQuery({
@@ -69,6 +73,10 @@ export default function DashboardScreen() {
   });
 
   const handleDeleteConfirm = (resume: Resume) => {
+    if (isOffline) {
+      Alert.alert('Offline Mode', 'Deleting resumes is disabled when offline.');
+      return;
+    }
     Alert.alert(
       'Delete Resume',
       `Are you sure you want to delete "${resume.title}"?`,
@@ -84,7 +92,22 @@ export default function DashboardScreen() {
     );
   };
 
+  const handleCreateNewResume = () => {
+    if (isOffline) {
+      Alert.alert(
+        'Offline Mode',
+        'Creating resumes is disabled when offline. Please reconnect to the internet to build a new resume.'
+      );
+    } else {
+      navigation.navigate('Builder');
+    }
+  };
+
   const onRefresh = async () => {
+    if (isOffline) {
+      Alert.alert('Offline Mode', 'Cannot refresh dashboard while offline.');
+      return;
+    }
     setRefreshing(true);
     await Promise.all([refetchDashboard(), refetchResumes()]);
     setRefreshing(false);
@@ -145,9 +168,14 @@ export default function DashboardScreen() {
 
               <TouchableOpacity 
                 onPress={() => handleDeleteConfirm(item)}
-                className="p-2 bg-slate-900/40 hover:bg-slate-900 border border-slate-700/50 rounded-xl"
+                disabled={isOffline}
+                className={`p-2 border rounded-xl ${
+                  isOffline 
+                    ? 'bg-slate-900/10 border-slate-800/20 opacity-30' 
+                    : 'bg-slate-900/40 border-slate-700/50 hover:bg-slate-900'
+                }`}
               >
-                <Trash2 size={16} color="#f87171" />
+                <Trash2 size={16} color={isOffline ? '#64748b' : '#f87171'} />
               </TouchableOpacity>
             </View>
           </View>
@@ -208,11 +236,17 @@ export default function DashboardScreen() {
           You haven't built or saved any resumes yet. Start creating your professional profile now.
         </Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Builder')}
-          className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3.5 rounded-2xl flex-row items-center shadow-lg shadow-indigo-500/20"
+          onPress={handleCreateNewResume}
+          className={`px-6 py-3.5 rounded-2xl flex-row items-center shadow-lg ${
+            isOffline
+              ? 'bg-slate-800 border border-slate-700'
+              : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
+          }`}
         >
-          <Plus size={18} color="#ffffff" className="mr-2" />
-          <Text className="text-white font-semibold text-sm">Create New Resume</Text>
+          <Plus size={18} color={isOffline ? '#64748b' : '#ffffff'} className="mr-2" />
+          <Text className={`font-semibold text-sm ${isOffline ? 'text-slate-500' : 'text-white'}`}>
+            {isOffline ? 'Offline Mode' : 'Create New Resume'}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -233,6 +267,16 @@ export default function DashboardScreen() {
 
   return (
     <View className="flex-1 bg-slate-900 relative">
+      {/* Offline Banner */}
+      {isOffline && (
+        <View className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex-row justify-center items-center">
+          <WifiOff size={14} color="#f59e0b" className="mr-2" />
+          <Text className="text-amber-500 text-xs font-semibold">
+            You are offline. Showing cached resumes (read-only mode)
+          </Text>
+        </View>
+      )}
+
       <FlatList
         data={resumes}
         renderItem={renderResumeCard}
@@ -254,16 +298,18 @@ export default function DashboardScreen() {
       {resumes.length > 0 && (
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('Builder')}
+          onPress={handleCreateNewResume}
           className="absolute bottom-6 right-6"
         >
           <LinearGradient
-            colors={['#6366f1', '#4f46e5']}
+            colors={isOffline ? ['#334155', '#1e293b'] : ['#6366f1', '#4f46e5']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            className="w-14 h-14 rounded-full justify-center items-center shadow-xl shadow-indigo-500/30"
+            className={`w-14 h-14 rounded-full justify-center items-center shadow-xl ${
+              isOffline ? 'border border-slate-700/50' : 'shadow-indigo-500/30'
+            }`}
           >
-            <Plus size={28} color="#ffffff" />
+            <Plus size={28} color={isOffline ? '#64748b' : '#ffffff'} />
           </LinearGradient>
         </TouchableOpacity>
       )}

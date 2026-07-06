@@ -4,16 +4,18 @@ import { useFormContext } from 'react-hook-form';
 import { FileText, Download, Save, CheckCircle } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import { useNetInfo } from '@react-native-community/netinfo';
 import { api } from '../../services/api';
 
 export default function PreviewStep() {
   const { getValues } = useFormContext();
   const queryClient = useQueryClient();
   const navigation = useNavigation<any>();
+  const netInfo = useNetInfo();
+  const isOffline = netInfo.isConnected === false;
 
-  const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('classic');
 
@@ -24,18 +26,10 @@ export default function PreviewStep() {
   const education = formData.education || [];
   const skills = formData.skills || [];
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        title: formData.title || `${personalInfo.full_name || 'My'} Resume`,
-        category: personalInfo.professional_title || 'General',
-        resume_data: formData,
-        ats_score: formData.ats_score || 0,
-      };
-
-      const res = await api.saveResume(payload);
-      if (res.success) {
+  const saveMutation = useMutation({
+    mutationFn: api.saveResume,
+    onSuccess: (data) => {
+      if (data.success) {
         Alert.alert('Success', 'Resume saved successfully!');
         queryClient.invalidateQueries({ queryKey: ['resumes'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -43,14 +37,33 @@ export default function PreviewStep() {
       } else {
         Alert.alert('Error', 'Failed to save resume.');
       }
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       Alert.alert('Error', err.message || 'An error occurred while saving.');
-    } finally {
-      setSaving(false);
+    },
+  });
+
+  const handleSave = () => {
+    if (isOffline) {
+      Alert.alert('Offline Mode', 'Saving resumes is disabled when offline. Please reconnect to the internet to save.');
+      return;
     }
+
+    const payload = {
+      title: formData.title || `${personalInfo.full_name || 'My'} Resume`,
+      category: personalInfo.professional_title || 'General',
+      resume_data: formData,
+      ats_score: formData.ats_score || 0,
+    };
+
+    saveMutation.mutate(payload);
   };
 
   const handleDownload = async () => {
+    if (isOffline) {
+      Alert.alert('Offline Mode', 'Downloading documents is disabled when offline. Please reconnect to the internet.');
+      return;
+    }
     setDownloading(true);
     try {
       const res = await api.downloadDocx(formData);
@@ -186,15 +199,21 @@ export default function PreviewStep() {
         {/* Save Resume */}
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving || downloading}
-          className="flex-1 bg-slate-800 border border-slate-700 py-4 rounded-2xl mr-2 flex-row justify-center items-center"
+          disabled={saveMutation.isPending || downloading}
+          className={`flex-1 py-4 rounded-2xl mr-2 flex-row justify-center items-center border ${
+            isOffline 
+              ? 'bg-slate-800/40 border-slate-800/20' 
+              : 'bg-slate-800 border-slate-700'
+          }`}
         >
-          {saving ? (
+          {saveMutation.isPending ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
             <>
-              <Save size={18} color="#ffffff" className="mr-2" />
-              <Text className="text-white text-base font-semibold">Save Resume</Text>
+              <Save size={18} color={isOffline ? '#64748b' : '#ffffff'} className="mr-2" />
+              <Text className={`text-base font-semibold ${isOffline ? 'text-slate-500' : 'text-white'}`}>
+                {isOffline ? 'Offline' : 'Save Resume'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -202,15 +221,21 @@ export default function PreviewStep() {
         {/* Download Word Doc */}
         <TouchableOpacity
           onPress={handleDownload}
-          disabled={saving || downloading}
-          className="flex-1 bg-indigo-600 py-4 rounded-2xl ml-2 flex-row justify-center items-center shadow-lg shadow-indigo-500/20"
+          disabled={saveMutation.isPending || downloading}
+          className={`flex-1 py-4 rounded-2xl ml-2 flex-row justify-center items-center border ${
+            isOffline 
+              ? 'bg-slate-800/40 border-slate-800/20' 
+              : 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20'
+          }`}
         >
           {downloading ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
             <>
-              <Download size={18} color="#ffffff" className="mr-2" />
-              <Text className="text-white text-base font-semibold">Download Docx</Text>
+              <Download size={18} color={isOffline ? '#64748b' : '#ffffff'} className="mr-2" />
+              <Text className={`text-base font-semibold ${isOffline ? 'text-slate-500' : 'text-white'}`}>
+                {isOffline ? 'Offline' : 'Download Docx'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
