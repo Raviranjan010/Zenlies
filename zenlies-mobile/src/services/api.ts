@@ -5,7 +5,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 export interface User {
   id: string;
   email: string;
-  name?: string;
+  full_name?: string;
 }
 
 export interface AuthResponse {

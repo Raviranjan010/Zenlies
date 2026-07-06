@@ -186,7 +186,7 @@ export default function DashboardScreen() {
 
   const renderHeader = () => {
     const stats = dashboardData?.stats;
-    const name = dashboardData?.user?.name || 'User';
+    const name = dashboardData?.user?.full_name || 'User';
 
     return (
       <View className="mb-6">

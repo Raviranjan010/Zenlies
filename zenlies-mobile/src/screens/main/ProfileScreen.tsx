@@ -40,7 +40,7 @@ export default function ProfileScreen() {
         </View>
 
         <Text className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
-          {user?.name || 'Zenlies User'}
+          {user?.full_name || 'Zenlies User'}
         </Text>
         
         <View className="flex-row items-center mb-4">

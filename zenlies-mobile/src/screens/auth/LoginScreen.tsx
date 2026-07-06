@@ -25,25 +25,33 @@ export default function LoginScreen() {
 
   // Google OAuth configuration
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || 'dummy-android-id',
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'dummy-ios-id',
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'dummy-web-id',
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    responseType: 'id_token',
+    scopes: ['openid', 'profile', 'email'],
   });
 
   useEffect(() => {
-    if (response?.type === 'success' && response.authentication?.accessToken) {
-      handleGoogleLogin(response.authentication.accessToken);
+    if (response?.type === 'success') {
+      const idToken = response.authentication?.idToken || response.params?.id_token;
+      if (idToken) {
+        handleGoogleLogin(idToken);
+      } else {
+        setError('Google Sign-In failed. Could not retrieve ID token.');
+        setGoogleLoading(false);
+      }
     } else if (response?.type === 'error') {
       setError('Google Sign-In failed. Please try again.');
       setGoogleLoading(false);
     }
   }, [response]);
 
-  const handleGoogleLogin = async (accessToken: string) => {
+  const handleGoogleLogin = async (idToken: string) => {
     setGoogleLoading(true);
     setError(null);
     try {
-      const res = await api.googleLogin({ google_token: accessToken });
+      const res = await api.googleLogin({ google_token: idToken });
       if (res.success && res.token && res.user) {
         loginStore(res.user, res.token);
       } else {
@@ -76,29 +84,6 @@ export default function LoginScreen() {
       setError(err.message || 'An error occurred. Please check your connection.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Helper to simulate Google login when Client IDs are not configured (for testing purposes)
-  const handleSimulatedGoogleLogin = async () => {
-    setGoogleLoading(true);
-    setError(null);
-    try {
-      // Send a mock token to the backend. In local environments, we test validation.
-      const res = await api.googleLogin({ google_token: 'mock_google_token_123' });
-      if (res.success && res.token && res.user) {
-        loginStore(res.user, res.token);
-      } else {
-        setError(res.error || 'Simulated Google login failed');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Simulation failed. Connecting directly to simulated API...');
-      // Fallback local simulate on store for visual check:
-      setTimeout(() => {
-        loginStore({ id: 'google-123', email: 'google-user@zenlies.com', name: 'Google User' }, 'mock-jwt-token');
-      }, 1000);
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -197,22 +182,22 @@ export default function LoginScreen() {
 
             {/* Google Login Button */}
             <TouchableOpacity
-              onPress={() => (request ? promptAsync() : handleSimulatedGoogleLogin())}
-              disabled={googleLoading}
-              className="flex-row justify-center items-center bg-slate-900 border border-slate-700 hover:bg-slate-900/80 rounded-2xl py-4 mb-3"
+              onPress={() => promptAsync()}
+              disabled={googleLoading || !request}
+              className={`flex-row justify-center items-center bg-slate-900 border border-slate-700 hover:bg-slate-900/80 rounded-2xl py-4 mb-3 ${
+                !request ? 'opacity-50' : ''
+              }`}
             >
               {googleLoading ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <>
-                  <Text className="text-white text-base font-semibold">Continue with Google</Text>
-                </>
+                <Text className="text-white text-base font-semibold">Continue with Google</Text>
               )}
             </TouchableOpacity>
 
             {!request && (
-              <Text className="text-slate-500 text-[10px] text-center mb-2">
-                * Running in Simulation Mode (No Google Credentials configured)
+              <Text className="text-rose-400/80 text-[10px] text-center mb-4 px-2 leading-relaxed">
+                Google Sign-In is unavailable because client IDs are not configured in your .env file.
               </Text>
             )}
           </View>

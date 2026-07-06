@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface User {
   id: string;
   email: string;
-  name?: string;
+  full_name?: string;
 }
 
 interface AuthState {
