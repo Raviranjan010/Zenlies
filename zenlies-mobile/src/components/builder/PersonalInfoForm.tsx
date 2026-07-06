@@ -5,8 +5,13 @@ import { useFormContext } from 'react-hook-form';
 export default function PersonalInfoForm() {
   const { register, setValue, watch, formState: { errors } } = useFormContext();
 
+  const getNestedError = (path: string) => {
+    return path.split('.').reduce((acc: any, part) => acc?.[part], errors);
+  };
+
   const renderInput = (name: string, label: string, placeholder: string, keyboardType: any = 'default', autoCapitalize: any = 'none') => {
     const value = watch(name) || '';
+    const errorObj = getNestedError(name);
     return (
       <View className="mb-4">
         <Text className="text-slate-400 text-xs font-semibold mb-2 ml-1">{label}</Text>
@@ -21,8 +26,8 @@ export default function PersonalInfoForm() {
             className="text-white text-sm py-0"
           />
         </View>
-        {errors[name] && (
-          <Text className="text-red-400 text-xs mt-1 ml-1">{(errors[name]?.message as string) || 'Invalid input'}</Text>
+        {errorObj && (
+          <Text className="text-red-400 text-xs mt-1 ml-1">{(errorObj?.message as string) || 'Invalid input'}</Text>
         )}
       </View>
     );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { useFormContext } from 'react-hook-form';
 import { FileText, Download, Save, CheckCircle } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -10,7 +10,7 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { api } from '../../services/api';
 
 export default function PreviewStep() {
-  const { getValues } = useFormContext();
+  const { getValues, setValue, watch } = useFormContext();
   const queryClient = useQueryClient();
   const navigation = useNavigation<any>();
   const netInfo = useNetInfo();
@@ -25,6 +25,8 @@ export default function PreviewStep() {
   const experience = formData.experience || [];
   const education = formData.education || [];
   const skills = formData.skills || [];
+  const projects = formData.project || [];
+  const certifications = formData.certification || [];
 
   const saveMutation = useMutation({
     mutationFn: api.saveResume,
@@ -97,6 +99,18 @@ export default function PreviewStep() {
   return (
     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }}>
       <Text className="text-xl font-bold text-white mb-6">Review & Export</Text>
+
+      {/* Resume Document Title */}
+      <Text className="text-slate-400 text-xs font-semibold mb-3 ml-1">RESUME DOCUMENT TITLE</Text>
+      <View className="bg-slate-900/60 border border-slate-700 rounded-2xl px-4 py-3 mb-6">
+        <TextInput
+          placeholder="e.g. Software Engineer Resume"
+          placeholderTextColor="#64748b"
+          value={watch('title') || ''}
+          onChangeText={(text) => setValue('title', text)}
+          className="text-white text-sm py-0"
+        />
+      </View>
 
       {/* Template Selector */}
       <Text className="text-slate-400 text-xs font-semibold mb-3 ml-1">CHOOSE TEMPLATE</Text>
@@ -174,6 +188,47 @@ export default function PreviewStep() {
                   <Text className="text-slate-500 text-[10px]">{edu.graduation_date}</Text>
                 </View>
                 <Text className="text-slate-600 text-[10px]">{edu.institution || 'Institution'} {edu.gpa ? ` | GPA: ${edu.gpa}` : ''}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Projects */}
+        {projects.length > 0 ? (
+          <View className="mb-4">
+            <Text className="text-indigo-600 text-[10px] font-bold tracking-wider uppercase mb-2">Projects</Text>
+            {projects.map((proj: any, index: number) => (
+              <View key={index} className="mb-3">
+                <View className="flex-row justify-between items-start">
+                  <Text className="text-slate-800 text-xs font-bold">{proj.title || 'Project'}</Text>
+                  {proj.technologies ? (
+                    <Text className="text-slate-500 text-[8px] font-semibold bg-slate-100 px-1 py-0.5 rounded">
+                      {proj.technologies}
+                    </Text>
+                  ) : null}
+                </View>
+                {proj.role ? (
+                  <Text className="text-indigo-500 text-[9px] font-semibold">{proj.role}</Text>
+                ) : null}
+                {proj.description ? (
+                  <Text className="text-slate-600 text-[9px] mt-1 leading-relaxed">{proj.description}</Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Certifications */}
+        {certifications.length > 0 ? (
+          <View className="mb-4">
+            <Text className="text-indigo-600 text-[10px] font-bold tracking-wider uppercase mb-2">Certifications</Text>
+            {certifications.map((cert: any, index: number) => (
+              <View key={index} className="mb-2">
+                <View className="flex-row justify-between items-start">
+                  <Text className="text-slate-800 text-xs font-bold">{cert.name || 'Certification'}</Text>
+                  <Text className="text-slate-500 text-[8px] font-mono">{cert.date || cert.issue_date}</Text>
+                </View>
+                <Text className="text-slate-600 text-[9px]">{cert.issuer || 'Issuer'}</Text>
               </View>
             ))}
           </View>
