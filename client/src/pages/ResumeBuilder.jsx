@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { DummyResumeData } from '../assets/assets'
 import { 
   ArrowLeftIcon, Briefcase, ChevronLeft, ChevronRight, EyeIcon, 
@@ -22,6 +22,7 @@ import ExperienceForm from '../Components/ExperienceForm.jsx'
 
 const ResumeBuilder = () => {
   const { resumeId } = useParams()
+  const navigate = useNavigate()
 
   const [resumeData, setResumeData] = useState({
     _id: '',
@@ -41,6 +42,43 @@ const ResumeBuilder = () => {
   })
 
   const loadExistingResume = useCallback(() => {
+    if (resumeId && resumeId !== 'default' && /^\d+$/.test(resumeId)) {
+      fetch(`/api/resumes/${resumeId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.resume) {
+            const resumeObj = data.resume;
+            let resumeDataObj = {};
+            if (resumeObj.resume_json) {
+              try {
+                resumeDataObj = JSON.parse(resumeObj.resume_json);
+              } catch(e) {
+                console.error("Failed to parse resume_json", e);
+              }
+            }
+            setResumeData({
+              _id: resumeObj.id,
+              title: resumeObj.title,
+              personal_info: resumeDataObj.personal_info || {},
+              professional_summary: resumeDataObj.professional_summary || resumeObj.resume_text || '',
+              experience: resumeDataObj.experience || [],
+              education: resumeDataObj.education || [],
+              project: resumeDataObj.project || [],
+              certifications: resumeDataObj.certifications || [],
+              skills: resumeDataObj.skills || [],
+              keywords: resumeDataObj.keywords || [],
+              template: resumeDataObj.template || 'classic',
+              accent_color: resumeDataObj.accent_color || 'grey',
+              font_size: resumeDataObj.font_size || 'base',
+              public: resumeDataObj.public || false,
+            });
+            document.title = resumeObj.title;
+          }
+        })
+        .catch(err => console.error("Error fetching resume from server", err));
+      return;
+    }
+
     if (DummyResumeData && DummyResumeData._id === resumeId && resumeId !== 'default') {
       setResumeData(DummyResumeData);
       document.title = DummyResumeData.title;
@@ -65,6 +103,38 @@ const ResumeBuilder = () => {
       console.error('Error loading prefill data from ATS analyzer', err);
     }
   }, [resumeId]);
+
+  const handleSave = async () => {
+    const isEdit = resumeId && resumeId !== 'default' && /^\d+$/.test(resumeId);
+    const payload = {
+      id: isEdit ? parseInt(resumeId, 10) : undefined,
+      title: resumeData.title || (resumeData.personal_info?.full_name ? resumeData.personal_info.full_name + " Resume" : "Untitled Resume"),
+      resume_data: resumeData,
+      resume_text: resumeData.professional_summary || "",
+      ats_score: parseFloat(localStorage.getItem('resume_ats_score') || '0'),
+      category: getAtsCategoryFromStorage(),
+    };
+
+    try {
+      const response = await fetch('/api/resumes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to save resume.');
+      }
+      
+      window.alert('Resume saved successfully!');
+      if (!isEdit && result.resume?.id) {
+        navigate(`/app/builder/${result.resume.id}`);
+      }
+    } catch (err) {
+      window.alert(err?.message || 'Could not save resume.');
+    }
+  };
 
   const [activeSectionIndex, setActiveSectionIndex] = useState(0)
   const [removeBackground, setRemoveBackground] = useState(false);
@@ -307,7 +377,7 @@ const ResumeBuilder = () => {
                 </button>
                 
                 <div className="flex gap-3">
-                   <button className="flex items-center gap-2 px-5 py-2 text-white rounded-full font-bold transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, #ff6b4a, #e14b29)', boxShadow: '0 10px 24px rgba(225,75,41,0.22)' }}>
+                   <button onClick={handleSave} className="flex items-center gap-2 px-5 py-2 text-white rounded-full font-bold transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, #ff6b4a, #e14b29)', boxShadow: '0 10px 24px rgba(225,75,41,0.22)' }}>
                     <Save size={18} />
                     Save
                   </button>

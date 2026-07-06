@@ -8,8 +8,41 @@ const Preview = () => {
   const [resumeData, setResumeData] = useState(null)
 
   useEffect(() => {
-    // Load resume data based on resumeId
-    if (DummyResumeData && DummyResumeData._id === resumeId) {
+    if (resumeId && /^\d+$/.test(resumeId)) {
+      fetch(`/api/resumes/${resumeId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.resume) {
+            const resumeObj = data.resume;
+            let resumeDataObj = {};
+            if (resumeObj.resume_json) {
+              try {
+                resumeDataObj = JSON.parse(resumeObj.resume_json);
+              } catch(e) {
+                console.error("Failed to parse resume_json", e);
+              }
+            }
+            setResumeData({
+              _id: resumeObj.id,
+              title: resumeObj.title,
+              personal_info: resumeDataObj.personal_info || {},
+              professional_summary: resumeDataObj.professional_summary || resumeObj.resume_text || '',
+              experience: resumeDataObj.experience || [],
+              education: resumeDataObj.education || [],
+              project: resumeDataObj.project || [],
+              certifications: resumeDataObj.certifications || [],
+              skills: resumeDataObj.skills || [],
+              keywords: resumeDataObj.keywords || [],
+              template: resumeDataObj.template || 'classic',
+              accent_color: resumeDataObj.accent_color || 'grey',
+              font_size: resumeDataObj.font_size || 'base',
+              public: resumeDataObj.public || false,
+            });
+            document.title = resumeObj.title;
+          }
+        })
+        .catch(err => console.error("Error loading preview", err));
+    } else if (DummyResumeData && DummyResumeData._id === resumeId) {
       setResumeData(DummyResumeData)
       document.title = DummyResumeData.title
     }

@@ -1,0 +1,272 @@
+import React, { useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Alert, RefreshControl, ActivityIndicator, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import { FileText, Plus, Trash2, Calendar, FileQuestion, Sparkles, Award, BarChart2, ChevronRight } from 'lucide-react-native';
+
+import { MainTabNavigationProp } from '../../navigation/types';
+import { api, Resume } from '../../services/api';
+
+const GRADIENTS: readonly (readonly [string, string])[] = [
+  ['#6366f1', '#8b5cf6'], // Indigo-Violet
+  ['#10b981', '#14b8a6'], // Emerald-Teal
+  ['#f43f5e', '#ec4899'], // Rose-Pink
+  ['#f59e0b', '#f97316'], // Amber-Orange
+  ['#0ea5e9', '#3b82f6'], // Sky-Blue
+];
+
+export default function DashboardScreen() {
+  const navigation = useNavigation<MainTabNavigationProp<'Dashboard'>>();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Queries
+  const { data: dashboardData, isLoading: isDashboardLoading, refetch: refetchDashboard } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: api.getDashboard,
+  });
+
+  const { data: resumesData, isLoading: isResumesLoading, refetch: refetchResumes } = useQuery({
+    queryKey: ['resumes'],
+    queryFn: api.listResumes,
+  });
+
+  // Delete Mutation with Optimistic Updates
+  const deleteMutation = useMutation({
+    mutationFn: api.deleteResume,
+    onMutate: async (id: number) => {
+      // Cancel outgoing refetch queries to prevent overwriting optimistic state
+      await queryClient.cancelQueries({ queryKey: ['resumes'] });
+      await queryClient.cancelQueries({ queryKey: ['dashboard'] });
+
+      // Snapshot previous cache state
+      const previousResumes = queryClient.getQueryData<{ success: boolean; resumes: Resume[] }>(['resumes']);
+
+      // Optimistically update resumes list in cache
+      queryClient.setQueryData<{ success: boolean; resumes: Resume[] }>(['resumes'], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          resumes: old.resumes.filter((r) => r.id !== id),
+        };
+      });
+
+      return { previousResumes };
+    },
+    onError: (err, id, context) => {
+      // Rollback to previous state if mutation fails
+      if (context?.previousResumes) {
+        queryClient.setQueryData(['resumes'], context.previousResumes);
+      }
+      Alert.alert('Error', 'Failed to delete resume. Please check your connection and try again.');
+    },
+    onSettled: () => {
+      // Sync cache with backend state
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
+  const handleDeleteConfirm = (resume: Resume) => {
+    Alert.alert(
+      'Delete Resume',
+      `Are you sure you want to delete "${resume.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteMutation.mutate(resume.id),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refetchDashboard(), refetchResumes()]);
+    setRefreshing(false);
+  };
+
+  const renderResumeCard = ({ item, index }: { item: Resume; index: number }) => {
+    const cardGradients = GRADIENTS[index % GRADIENTS.length];
+    const scoreColor = item.ats_score && item.ats_score >= 70 
+      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+      : item.ats_score && item.ats_score >= 50 
+        ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
+        : 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+
+    return (
+      <View className="bg-slate-800/80 border border-slate-700/50 rounded-3xl overflow-hidden mb-4 shadow-lg">
+        {/* Card colored gradient header strip */}
+        <LinearGradient
+          colors={cardGradients}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          className="h-2 w-full"
+        />
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('ResumePreview', { resumeId: String(item.id) })}
+          className="p-5"
+        >
+          <View className="flex-row justify-between items-start">
+            <View className="flex-1 mr-3">
+              <Text className="text-white text-lg font-bold mb-1" numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-3">
+                {item.category || 'General'}
+              </Text>
+              
+              {/* Date */}
+              <View className="flex-row items-center">
+                <Calendar size={14} color="#64748b" className="mr-1.5" />
+                <Text className="text-slate-500 text-xs">
+                  Updated: {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Score and actions */}
+            <View className="items-end justify-between h-20">
+              {item.ats_score !== undefined && item.ats_score !== null ? (
+                <View className={`border px-3 py-1 rounded-full ${scoreColor}`}>
+                  <Text className="text-xs font-bold font-mono">ATS: {Math.round(item.ats_score)}%</Text>
+                </View>
+              ) : (
+                <View className="border border-slate-700 bg-slate-900/60 px-3 py-1 rounded-full">
+                  <Text className="text-slate-500 text-xs font-bold">Unscored</Text>
+                </View>
+              )}
+
+              <TouchableOpacity 
+                onPress={() => handleDeleteConfirm(item)}
+                className="p-2 bg-slate-900/40 hover:bg-slate-900 border border-slate-700/50 rounded-xl"
+              >
+                <Trash2 size={16} color="#f87171" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderHeader = () => {
+    const stats = dashboardData?.stats;
+    const name = dashboardData?.user?.name || 'User';
+
+    return (
+      <View className="mb-6">
+        {/* Welcome Section */}
+        <View className="flex-row items-center mb-6">
+          <Sparkles size={24} color="#6366f1" className="mr-2" />
+          <Text className="text-2xl font-bold text-white">Dashboard</Text>
+        </View>
+
+        <Text className="text-slate-400 text-sm mb-6">
+          Welcome back, <Text className="text-white font-semibold">{name}</Text>! Check your ATS performance.
+        </Text>
+
+        {/* Stats Grid */}
+        <View className="flex-row justify-between mb-2">
+          {/* Total Resumes */}
+          <View className="bg-slate-800/80 border border-slate-700/50 rounded-2xl p-4 flex-1 mr-2 items-center">
+            <FileText size={20} color="#6366f1" className="mb-2" />
+            <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Resumes</Text>
+            <Text className="text-white text-xl font-extrabold mt-1">{stats?.total_resumes ?? 0}</Text>
+          </View>
+
+          {/* Average Score */}
+          <View className="bg-slate-800/80 border border-slate-700/50 rounded-2xl p-4 flex-1 mx-1 items-center">
+            <BarChart2 size={20} color="#10b981" className="mb-2" />
+            <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Avg ATS</Text>
+            <Text className="text-white text-xl font-extrabold mt-1">{stats?.avg_score ?? 0}%</Text>
+          </View>
+
+          {/* Best Score */}
+          <View className="bg-slate-800/80 border border-slate-700/50 rounded-2xl p-4 flex-1 ml-2 items-center">
+            <Award size={20} color="#f59e0b" className="mb-2" />
+            <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Best Score</Text>
+            <Text className="text-white text-xl font-extrabold mt-1">{stats?.best_score ?? 0}%</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderEmptyState = () => {
+    return (
+      <View className="bg-slate-800/50 border border-slate-700/30 rounded-3xl p-8 items-center mt-4">
+        <FileQuestion size={48} color="#6366f1" className="mb-4" />
+        <Text className="text-white text-lg font-bold mb-2">No Saved Resumes</Text>
+        <Text className="text-slate-400 text-sm text-center mb-6 leading-relaxed">
+          You haven't built or saved any resumes yet. Start creating your professional profile now.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Builder')}
+          className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3.5 rounded-2xl flex-row items-center shadow-lg shadow-indigo-500/20"
+        >
+          <Plus size={18} color="#ffffff" className="mr-2" />
+          <Text className="text-white font-semibold text-sm">Create New Resume</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // Full Screen Loading state
+  const isInitialLoading = (isDashboardLoading || isResumesLoading) && !refreshing;
+  const resumes = resumesData?.resumes || [];
+
+  if (isInitialLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-slate-900">
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-slate-400 text-sm mt-4 font-semibold">Loading Dashboard...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-slate-900 relative">
+      <FlatList
+        data={resumes}
+        renderItem={renderResumeCard}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmptyState}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#6366f1']}
+            tintColor="#6366f1"
+          />
+        }
+      />
+
+      {/* Floating Action Button (FAB) */}
+      {resumes.length > 0 && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Builder')}
+          className="absolute bottom-6 right-6"
+        >
+          <LinearGradient
+            colors={['#6366f1', '#4f46e5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="w-14 h-14 rounded-full justify-center items-center shadow-xl shadow-indigo-500/30"
+          >
+            <Plus size={28} color="#ffffff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}

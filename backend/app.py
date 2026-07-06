@@ -51,25 +51,34 @@ app = Flask(
 app.secret_key = os.environ.get("SECRET_KEY", "airesume-secret-key-2026")
 
 # --- Database Init ---
-DB_USER = os.environ.get("DB_USER", "root")
-DB_PASS = os.environ.get("DB_PASS", "1234")
+DB_TYPE = os.environ.get("DB_TYPE", "sqlite")
+DB_USER = os.environ.get("DB_USER")
+DB_PASS = os.environ.get("DB_PASS")
 DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.environ.get("DB_PORT", 3306))
 DB_NAME = os.environ.get("DB_NAME", "resume_scanner")
 
-# Auto-create the database if it doesn't exist
-try:
-    import pymysql
-    conn = pymysql.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASS)
-    cursor = conn.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}`")
-    conn.commit()
-    conn.close()
-    print(f"[DB] Database '{DB_NAME}' is ready.")
-except Exception as e:
-    print(f"[DB] Warning: Could not auto-create database: {e}")
+db_uri = None
+if DB_TYPE == "mysql" or (DB_USER and DB_PASS):
+    # Auto-create the database if it doesn't exist
+    try:
+        import pymysql
+        conn = pymysql.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASS)
+        cursor = conn.cursor()
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}`")
+        conn.commit()
+        conn.close()
+        print(f"[DB] Database '{DB_NAME}' is ready.")
+        db_uri = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    except Exception as e:
+        print(f"[DB] Warning: Could not connect to MySQL ({e}). Falling back to SQLite.")
 
-app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if not db_uri:
+    db_file_path = os.path.join(BASE_DIR, "resume_scanner.db")
+    db_uri = f"sqlite:///{db_file_path}"
+    print(f"[DB] Using SQLite database at {db_file_path}")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 CORS(app)
@@ -85,6 +94,33 @@ except Exception as e:
     print("[DB] Server will run but auth features won't work.")
 
 service = ResumeModelService(dataset_path=DATASET_PATH)
+
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+
+def encode_auth_token(user_id):
+    serializer = URLSafeTimedSerializer(app.secret_key)
+    return serializer.dumps({"user_id": user_id}, salt="auth-salt")
+
+def decode_auth_token(token):
+    serializer = URLSafeTimedSerializer(app.secret_key)
+    try:
+        # Token valid for 30 days
+        data = serializer.loads(token, salt="auth-salt", max_age=30 * 24 * 3600)
+        return data.get("user_id")
+    except (SignatureExpired, BadSignature):
+        return None
+
+def get_user_id():
+    # 1. Check Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        user_id = decode_auth_token(token)
+        if user_id:
+            return user_id
+    
+    # 2. Check Session (web app fallback)
+    return session.get("user_id")
 
 
 def send_email(subject, recipient, body_html):
@@ -147,8 +183,8 @@ def _client_build_ready() -> bool:
 
 
 def is_authenticated():
-    """Check if a user is logged in via session."""
-    return "user_id" in session
+    """Check if a user is logged in via session or bearer token."""
+    return get_user_id() is not None
 
 
 @app.get("/resume-maker")
@@ -756,6 +792,7 @@ def register():
     otp_entry = OTP(email=email, code=otp_code, purpose="registration")
     db.session.add(otp_entry)
     db.session.commit()
+    print(f"\n[OTP] 🚀 Registration OTP for {email} is: {otp_code}\n")
 
     email_body = f"""
     <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -806,7 +843,8 @@ def verify_otp():
         db.session.commit()
         
         session["user_id"] = user.id
-        return jsonify({"success": True, "user": user.to_dict()})
+        token = encode_auth_token(user.id)
+        return jsonify({"success": True, "token": token, "user": user.to_dict()})
     
     return jsonify({"success": False, "error": "User not found."}), 404
 
@@ -828,6 +866,7 @@ def resend_otp():
     otp_entry = OTP(email=email, code=otp_code, purpose="registration")
     db.session.add(otp_entry)
     db.session.commit()
+    print(f"\n[OTP] 🚀 Resent OTP for {email} is: {otp_code}\n")
 
     send_email("New Verification Code", email, f"Your new code is: {otp_code}")
     return jsonify({"success": True, "message": "New OTP sent."})
@@ -853,7 +892,8 @@ def login():
         }), 403
 
     session["user_id"] = user.id
-    return jsonify({"success": True, "user": user.to_dict()})
+    token = encode_auth_token(user.id)
+    return jsonify({"success": True, "token": token, "user": user.to_dict()})
 
 
 @app.route("/api/auth/logout", methods=["POST"])
@@ -868,9 +908,9 @@ def logout():
 def google_auth():
     """Login or register via Google ID token."""
     data = request.get_json(force=True)
-    id_token_str = data.get("id_token", "")
+    id_token_str = data.get("id_token") or data.get("google_token") or ""
     if not id_token_str:
-        return jsonify({"success": False, "error": "No id_token provided."}), 400
+        return jsonify({"success": False, "error": "No id_token or google_token provided."}), 400
 
     try:
         from google.oauth2 import id_token as gid_token
@@ -895,7 +935,8 @@ def google_auth():
             db.session.commit()
 
         session["user_id"] = user.id
-        return jsonify({"success": True, "user": user.to_dict()})
+        token = encode_auth_token(user.id)
+        return jsonify({"success": True, "token": token, "user": user.to_dict()})
     except ValueError as e:
         return jsonify({"success": False, "error": f"Invalid Google token: {e}"}), 401
     except Exception as e:
@@ -909,7 +950,7 @@ def save_analysis_to_session():
     session["analysis_result"] = json.dumps(data)
     
     # Also save to DB if user is logged in
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if user_id and data.get("analysis"):
         analysis = data["analysis"]
         resume = Resume(
@@ -938,7 +979,7 @@ def get_analysis_from_session():
 @app.route("/api/auth/me", methods=["GET"])
 def get_current_user():
     """Get the currently logged-in user profile."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
     user = db.session.get(User, user_id)
@@ -951,7 +992,7 @@ def get_current_user():
 @app.route("/api/auth/update", methods=["PUT"])
 def update_profile():
     """Update user profile fields."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
     user = db.session.get(User, user_id)
@@ -970,7 +1011,7 @@ def update_profile():
 @app.route("/api/dashboard", methods=["GET"])
 def get_dashboard():
     """Get dashboard stats for the logged-in user."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
     user = db.session.get(User, user_id)
@@ -1024,7 +1065,7 @@ def profile_page():
 @app.route("/api/resumes", methods=["GET"])
 def list_resumes():
     """List all resumes for the logged-in user."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
     resumes = Resume.query.filter_by(user_id=user_id).order_by(Resume.updated_at.desc()).all()
@@ -1034,7 +1075,7 @@ def list_resumes():
 @app.route("/api/resumes", methods=["POST"])
 def save_resume():
     """Create or update a resume."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
 
@@ -1077,7 +1118,7 @@ def save_resume():
 @app.route("/api/resumes/<int:resume_id>", methods=["GET"])
 def get_resume(resume_id):
     """Get a single resume by ID."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
     resume = Resume.query.filter_by(id=resume_id, user_id=user_id).first()
@@ -1089,7 +1130,7 @@ def get_resume(resume_id):
 @app.route("/api/resumes/<int:resume_id>", methods=["DELETE"])
 def delete_resume(resume_id):
     """Delete a resume."""
-    user_id = session.get("user_id")
+    user_id = get_user_id()
     if not user_id:
         return jsonify({"success": False, "error": "Not logged in."}), 401
     resume = Resume.query.filter_by(id=resume_id, user_id=user_id).first()

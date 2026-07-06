@@ -146,6 +146,41 @@ In short: it saves time, improves quality, and increases decision confidence for
 4. Run ranking.
 5. Review ranked candidates by ATS score.
 
+## Step-by-Step Localhost Run Guide
+
+To run this project on your local machine, follow these steps:
+
+### 1) Configuration (.env)
+Create a `.env` file inside the `backend` directory:
+```env
+GEMINI_API_KEY=your_actual_gemini_key
+DB_TYPE=sqlite
+SECRET_KEY=airesume-secret-key-2026
+```
+*(Note: If `DB_TYPE` is set to `sqlite`, it will automatically create and use a local SQLite database file `backend/resume_scanner.db`, removing the need for a running MySQL server!)*
+
+### 2) Run the Backend Server
+Start the Flask backend (it serves both traditional pages and the compiled React Resume Builder SPA):
+```bash
+cd backend
+python app.py
+```
+This runs the application at `http://127.0.0.1:5000`.
+
+### 3) Local registration & Login OTP
+When registering or requesting a new OTP, check your backend server terminal. The OTP code is logged directly to the console like:
+`[OTP] 🚀 Registration OTP for email@domain.com is: XXXXXX`
+Simply copy and paste it into the UI verification page.
+
+### 4) Local React Development (Optional)
+If you want to make active changes to the React client, run the Vite dev server:
+```bash
+cd client
+npm install
+npm run dev
+```
+All API requests (`/api/...`) from `http://localhost:5173` are automatically proxied to the Flask server on port `5000`.
+
 ---
 
 ## Step-by-Step Deployment Guide (Frontend on Vercel + Backend on Render)
